@@ -1,6 +1,11 @@
 import zrender from 'zrender';
 import { fixCoordinate } from './helper/fix';
-
+/**
+ * 当出现mouseup与dragend事件时，处理brush区域
+ * @param {any} context 
+ * @param {any} opt 
+ * @param {any} brushRect 
+ */
 function handleBrush (context, opt, brushRect) {
   let index = context._actives.findIndex(i => i.key === opt.key);
   if (brushRect == null) {
@@ -23,29 +28,31 @@ export function BrushXBuilder (context, opt) {
     position: [-1 * opt.extent[0] / 2, 0],
     cursor: 'crosshair'
   });
-  let brushXGroup = new zrender.Group();
+
+  extent.name = 'extent';
+
   g.add(extent);
-  g.add(brushXGroup);
 
   extent.on('mousedown', function (ev) {
-    let [originX, originY] = fixCoordinate(ev, opt);
-    brushXGroup.removeAll();
-    context._zr.refresh();
+    let originY = fixCoordinate(ev, opt)[1];
     let brushRect = null;
-    // let index = context._actives.findIndex(i => i.key === opt.key);
-    // context._actives[index].extent = [0, 0];
+    let oldBrush = g.children()
+    if (oldBrush.length === 2) {
+      g.remove(oldBrush[1]);
+    }
     function onMouseMove (ev) {
-      brushRect = null;
+
       let distY = fixCoordinate(ev, opt)[1] - originY;
-      brushXGroup.removeAll();
+
+      g.remove(brushRect);
       brushRect = new zrender.Rect({
-        shape: { width: opt.extent[0], height: distY },
+        shape: { width: opt.extent[0], height: 100 },
         style: { stroke: '#000', lineDash: [5, 5], fill: 'transparent', lineWidth: 1 },
-        position: [-1 * parseInt(opt.extent[0] / 2), originY + 0.5],
+        position: [-1 * opt.extent[0] / 2, 0],
         cursor: 'move',
         draggable: true
       });
-
+      brushRect.name = 'brush';
       brushRect.on('dragstart', function (ev) {
         let distY = fixCoordinate(ev, opt)[1] - this.position[1];
         let pos0 = this.position[0];
@@ -67,13 +74,14 @@ export function BrushXBuilder (context, opt) {
         this.on('drag', onDrag);
         this.on('dragend', onDragEnd);
         context._zr.on('drag', onDrag);
-      })
-      brushXGroup.add(brushRect);
+      });
+      brushRect.shape.height = distY;
+      brushRect.position[1] = originY + 0.5
+      g.add(brushRect);
+      context._zr.refresh();
     }
     function onMouseUp (ev) {
-
       handleBrush(context, opt, brushRect);
-
       this.off('mousemove', onMouseMove);
       context._zr.off('mouseup', onMouseUp);
       context._zr.off('mousemove', onMouseMove);

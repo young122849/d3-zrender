@@ -55,26 +55,6 @@ export function AxisBuilder (scale, opt, context) {
   });
   g.add(name);
 
-  // g.on('dragstart', function (ev) {
-
-  //   let pos1 = this.position[1];
-  //   function onDrag (ev) {
-  //     let [offsetX, offsetY] = fixCoordinate(ev, opt);
-
-  //     let distX = offsetX - originX;
-  //     this.position = [parseInt(offsetX) + 0.5, pos1];
-  //     context._axisGroup.remove(g);
-  //     context._axisGroup.add(g);
-
-  //   }
-  //   this.on('drag', onDrag)
-  //   this.on('dragend', function (ev) {
-  //     let newTick = { pos: this.position[0], value: opt.name };
-  //     context.reorder(newTick)
-  //   })
-
-  // });
-  // g.position = opt.position;
   switch (opt.orient) {
     case 'bottom':
       g.add(new zrender.Line({

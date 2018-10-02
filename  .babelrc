@@ -1,0 +1,9 @@
+{
+  "presets": [
+    "env",
+    "latest"
+  ],
+  "plugins": [
+    "transform-decorators-legacy"
+  ]
+}

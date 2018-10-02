@@ -16,7 +16,6 @@ function handleBrush (context, opt, brushRect) {
 
 export function BrushXBuilder (context, opt) {
   let g = new zrender.Group();
-  g.position = opt.position;
   // 添加背景rect，响应鼠标事件
   let extent = new zrender.Rect({
     shape: { width: opt.extent[0], height: opt.extent[1] },
@@ -42,7 +41,7 @@ export function BrushXBuilder (context, opt) {
       brushRect = new zrender.Rect({
         shape: { width: opt.extent[0], height: distY },
         style: { stroke: '#000', lineDash: [5, 5], fill: 'transparent', lineWidth: 1 },
-        position: [-1 * parseInt(opt.extent[0] / 2), originY],
+        position: [-1 * parseInt(opt.extent[0] / 2), originY + 0.5],
         cursor: 'move',
         draggable: true
       });
@@ -52,6 +51,7 @@ export function BrushXBuilder (context, opt) {
         let pos0 = this.position[0];
         let self = this;
         function onDrag (ev) {
+          ev.cancelBubble = true;
           handleBrush(context, opt, brushRect);
           let pos1 = fixCoordinate(ev, opt)[1] - distY;
           pos1 = pos1 < 0 ? 0 : pos1;

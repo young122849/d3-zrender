@@ -7,10 +7,17 @@ function AxisTicksBuilder (scale, tickArguments) {
     // 当前比例尺为scaleBand
 
     ticks = scale.domain().map(d => ({
-      pos: scale(d),
+      pos: scale(d) + scale.bandwidth() / 2,
       value: d
     }));
-
+    ticks.push({
+      pos: 0,
+      value: ''
+    });
+    ticks.push({
+      pos: scale.range()[1],
+      value: ''
+    })
   } else {
     ticks = scale.ticks(tickArguments).map(d => ({
       pos: scale(d),
@@ -22,7 +29,7 @@ function AxisTicksBuilder (scale, tickArguments) {
     });
     ticks.push({
       pos: scale.range()[1],
-      value: ''
+      value: parseInt(scale.invert(scale.range()[1]))
     })
   };
   return ticks;
@@ -36,37 +43,37 @@ export function AxisBuilder (scale, opt, context) {
   let labelTicks = [], adjustX = -1, adjustY = -1;
   let baseOriginY = 0, baseEndY = 5, baseOriginX = 0, baseEndX = 5;
   let g = new zrender.Group();
-  let name = new zrender.Text({
-    style: {
-      text: opt.name,
-      textFill: '#000',
-      textAlign: 'center',
-      fontSize: 18.5
-    },
-    draggable: true,
-    position: [-3, -25]
-  });
-  name.on('dragstart', function () {
-    let pos0 = this.position[0];
-    let pos1 = this.position[1];
-    this.on('drag', function () {
-      this.position = [pos0, pos1];
-    });
-  });
-  g.add(name);
+  // let name = new zrender.Text({
+  //   style: {
+  //     text: opt.name,
+  //     textFill: '#000',
+  //     textAlign: 'center',
+  //     fontSize: 18.5
+  //   },
+  //   draggable: true,
+  //   position: [-3, -25]
+  // });
+  // name.on('dragstart', function () {
+  //   let pos0 = this.position[0];
+  //   let pos1 = this.position[1];
+  //   this.on('drag', function () {
+  //     this.position = [pos0, pos1];
+  //   });
+  // });
+  // g.add(name);
 
   switch (opt.orient) {
     case 'bottom':
       g.add(new zrender.Line({
         shape: {
           x1: 0,
-          y1: 0.5,
-          x2: opt.cWidth,
-          y2: 0.5
+          y1: 0,
+          x2: opt.cW,
+          y2: 0
         },
       }));
       labelTicks = ticks.map(tick => {
-        adjustX = Math.round(tick.pos) + 0.5;
+        adjustX = Math.round(tick.pos);
         return {
           ...tick,
           x1: adjustX,
@@ -79,28 +86,28 @@ export function AxisBuilder (scale, opt, context) {
         }
       })
       break;
-    case 'right':
+    case 'left':
       let temp = new zrender.Line({
         shape: {
           x1: 0,
           y1: 0,
           x2: 0,
-          y2: opt.cHeight
+          y2: opt.cH
         },
       })
       g.add(temp);
 
       labelTicks = ticks.map(tick => {
-        adjustY = Math.round(tick.pos) + 0.5;
+        adjustY = Math.round(tick.pos)
         return {
           ...tick,
           x1: baseOriginX,
           y1: adjustY,
-          x2: baseEndX,
+          x2: -1 * baseEndX,
           y2: adjustY,
           x3: opt.width,
           y3: adjustY,
-          textAlign: 'left',
+          textAlign: 'right',
           textVerticalAlign: 'middle'
         }
       })
@@ -120,6 +127,7 @@ export function AxisBuilder (scale, opt, context) {
         'stroke': '#000'
       }
     }));
+
     // 添加刻度文字
     g.add(new zrender.Text({
       style: {
@@ -128,7 +136,7 @@ export function AxisBuilder (scale, opt, context) {
         textAlign: item.textAlign ? item.textAlign : null,
         textVerticalAlign: item.textVerticalAlign ? item.textVerticalAlign : null
       },
-      position: [item.x2 + 2, item.y2]
+      position: [item.x2 - 2, item.y2]
     }));
     // 添加比例尺名称
 

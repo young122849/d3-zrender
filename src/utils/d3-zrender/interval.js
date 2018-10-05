@@ -1,6 +1,7 @@
 import zrender from 'zrender';
 import Chart from './base';
 import { AxisBuilder } from './AxisBuilder'
+import { vLinePointer, hLinePointer, vShadowPointer } from './PointerBuilder';
 export default class Interval extends Chart {
   constructor(elm, opt) {
     super(elm, opt);
@@ -16,7 +17,7 @@ export default class Interval extends Chart {
     this._scales.color = d3.scaleOrdinal(d3.schemePastel1);
     let g1 = new zrender.Group();
     g1.name = 'vertical';
-    g1.position = [0.5, 0.5];
+    g1.attr({ position: [0.5, 0.5] })
     this._container.add(g1);
 
     let g2 = new zrender.Group();
@@ -24,6 +25,22 @@ export default class Interval extends Chart {
     g2.position = [0.5, this._opt.cH + 0.5];
     this._container.add(g2);
     // this.mountAxis(g2.name);
+
+    this._vPointer = new zrender.Group();
+    this._vPointer.name = 'vPointer';
+    this._container.add(this._vPointer);
+
+    this._vPointer = new zrender.Group();
+    this._vPointer.name = 'hPointer';
+    this._container.add(this._vPointer);
+    this.mountPointer();
+  }
+  mountPointer () {
+    this._scales.xScale = this._scales.h['mainCategory'];
+    this._scales.yScale = this._scales.v['value'];
+    // vShadowPointer(this)
+    hLinePointer(this, { trigger: 'axis', continuous: true })
+    vLinePointer(this, { trigger: 'axis', continuous: false, lineDash: [5, 5] });
 
   }
   render () {
@@ -90,6 +107,7 @@ export default class Interval extends Chart {
     this.compute(year);
     this.mountAxis('horizontal');
     this.mountAxis('vertical');
+
     this.render();
 
   }

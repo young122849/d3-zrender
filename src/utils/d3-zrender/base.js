@@ -14,18 +14,19 @@ export default class Chart {
     this._container.position = [this._opt.margin.left, this._opt.margin.top];
     this._zr.add(this._container);
 
-    this._graphGroup = new zrender.Group();
-    this._container.add(this._graphGroup);
 
     // 添加比例尺
     this._scales = {};
-    this._scales.v = {};
-    this._scales.h = {};
-    this._scales.p = {};
+    this._scales.x = {};
+    this._scales.y = {};
+    // this._scales.p = {};
     this._custom = document.createElement('custom');
     this.resize();
+    // 添加指示器
+
   }
   resize () {
+    this._zr.resize();
     this._opt.w = this._zr.getWidth();
     this._opt.h = this._zr.getHeight();
     this._opt.cW = this._opt.w - this._opt.margin.left - this._opt.margin.right;

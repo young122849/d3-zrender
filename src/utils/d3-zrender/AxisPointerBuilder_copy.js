@@ -1,4 +1,5 @@
 import zrender from 'zrender';
+import { fixCoordinate } from './helper/fix';
 function vLinePointer (ev, opt) {
   // 创建垂直线条指示器
   let g = new zrender.Group();
@@ -86,7 +87,17 @@ function linePointer (ev, opt) {
       break;
     }
   }
+}
 
+function vShadowPointer (ev, opt) {
+  let [offsetX] = fixCoordinate(ev, opt)[0];
+}
+
+function hShadowPointer () { }
+
+function shadowPoint (ev, opt) {
+  if (opt.orient === 'vertical') return vShadowPointer();
+  else if (opt.orient === 'horizontal') return vShadowPointer()
 }
 
 function crossPointer (ev, opt) {

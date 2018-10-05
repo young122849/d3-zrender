@@ -1,140 +1,130 @@
 import zrender from 'zrender';
 import * as d3 from 'd3';
+import Chart from './base';
 import { AxisBuilder } from './AxisBuilder';
 import { BrushXBuilder } from './BrushBuilder';
 import { fixCoordinate } from './helper/fix'
-export default class Chart {
+export default class ParallelCoordinate extends Chart {
   constructor(elm, opt) {
-    opt = { ...opt, margin: { top: 100, right: 100, bottom: 50, left: 100 } };
-    elm = typeof elm === 'string' ? document.querySelector(elm) : elm;
-    this._zr = zrender.init(elm);
-    this._scales = {};
-    this._scales.vScales = [];
-    this._scales.hScale = d3.scalePoint().domain(d3.range(8));
-    this._scales.color = d3.scaleSequential(d3.interpolateRdYlBu);
-    this._custom = document.createElement('custom');
-    this._opt = opt;
-
-    this._groupIds = [];
-    this._actives = [];
-    this._container = new zrender.Group();
-    this._container.position = [this._opt.margin.left, this._opt.margin.top];
-    this._zr.add(this._container);
-    this._axisGroup = new zrender.Group();
-    this._brushGroup = new zrender.Group();
-    this._graphGroup = new zrender.Group();
-    this._container.add(this._graphGroup);
-    // this._container.add(this._axisGroup);
-    // this._container.add(this._brushGroup);
-    this.keys = null;
-
+    super(elm, opt);
   }
   updateData (data) {
-
-    this.data = data || this.data;
-    this.resize();
+    this._data = data || this._data;
     this.init();
-
-    // this.reorder();
-    this.updateAxis();
-    this.mountAxis()
-    this.mountBrush();
+    this.updateScale()
+    this.compute();
     this.render();
   }
-  resize () {
-    this._opt.width = this._zr.getWidth();
-    this._opt.height = this._zr.getHeight();
-    this._opt.cWidth = this._opt.width - this._opt.margin.left - this._opt.margin.right;
-    this._opt.cHeight = this._opt.height - this._opt.margin.top - this._opt.margin.bottom;
-  }
   init () {
-    let keys = Object.keys(this.data[0]).filter(i => i !== 'city');
+    this._actives = [];
+    this._graphGroup = new zrender.Group();
+    this._graphGroup.attr('name', 'graphs');
+    this._container.add(this._graphGroup);
+    this._columns = ["date", "AQI", "PM2.5", "PM10", "CO", "NO2", "SO2", "rating"];
     let self = this;
-    this._scales.hScale.domain(keys).range([0, this._opt.cWidth]);
-    let ticks = this._scales.hScale.domain().map(i => ({ pos: parseInt(this._scales.hScale(i)) + 0.5, value: i }));
-    for (let tick of ticks) {
+    this._scales.x['category'] = d3.scalePoint().domain(this._columns).range([0, this._opt.cW]);
+    this._scales.x['category'].domain().forEach(c => {
       let g = new zrender.Group();
-      g.position = [tick.pos, 0];
-      g.name = tick.value;
-      g.on('drag', function (ev) {
-        let offsetX = fixCoordinate(ev, self._opt);
-        this.position = [parseInt(offsetX) + 0.5, 0.5];
-        self._container.remove(g);
-        self._container.add(g);
-        self._zr.refresh();
-      });
-      g.on('dragend', function (ev) {
-        let offsetX = fixCoordinate(ev, self._opt);
-        let newTick = { pos: parseInt(offsetX), value: this.name };
-        self.reorder(newTick);
-      })
-      this._container.add(g);
-      this.mountAxis(tick.value);
-      this.mountBrush(tick.value);
-    }
+      g.attr('name', c);
+      g.attr('position', [parseInt(this._scales.x['category'](c)) + 0.5, 0]);
+      self._container.add(g);
+      if (c === 'rating') {
+        self._scales.y[c] = d3.scalePoint();
+      } else {
+        self._scales.y[c] = d3.scaleLinear();
+      }
+    });
+    this._scales.color = d3.scaleSequential(d3.interpolateRdYlBu)
+  }
+  updateScale (reorder) {
+    this._scales.x['category'].domain(this._columns).range([0, this._opt.cW]);
+    this._scales.color.domain([0, d3.max(this._data, i => i['PM10'])]);
+    this._columns.forEach(c => {
+      let g = this._container.childOfName(c);
+      g.attr('position', [parseInt(this._scales.x['category'](c)) + 0.5, 0]);
+      if (reorder !== true) {
+        // 如果仅仅是重排序坐标轴，则不需要更新坐标轴
+        let parentGroup = this._container.childOfName(c);
+        if (c === 'rating') {
+          this._scales.y[c].domain([...new Set(this._data.map(i => i.rating))]).range([this._opt.cH, 0]);
+          AxisBuilder(this._scales.y[c], { ...this._opt, name: c, position: 'top', stroke: '#000', orient: 'left' }, parentGroup, this)
+        } else {
+          this._scales.y[c].domain([0, d3.max(this._data, i => i[c])]).range([this._opt.cH, 0]).nice();
+          AxisBuilder(this._scales.y[c], { ...this._opt, name: c, position: 'top', stroke: '#000', orient: 'left' }, parentGroup, this)
+        }
+        BrushXBuilder(this, { ...this._opt, key: c, extent: [20, this._opt.cH] }, parentGroup);
+      }
+    });
+  }
+  shuffle (columns) {
+    this._columns = columns;
+    this.updateScale(true);
+    this.compute();
+    this.render();
+  }
+  handleSelection () {
+    this.compute();
+    this.render();
   }
   reorder (newTick) {
     // 简单插入排序
-    let ticks = this._scales.hScale.domain().map(i => ({ pos: parseInt(this._scales.hScale(i)), value: i }))
+    let ticks = this._scales.x['category'].domain().map(i => ({ pos: parseInt(this._scales.x['category'](i)), value: i }))
     let index = ticks.findIndex(i => i.value === newTick.value);
     ticks[index].pos = newTick.pos;
     ticks = ticks.sort(function (a, b) {
       return a.pos - b.pos;
     });
-    this._scales.hScale.domain(ticks.map(i => i.value)).range([0, this._opt.cWidth]);
-    this._scales.hScale.domain().forEach(i => {
-      let g = this._container.childOfName(i);
-      this._container.remove(g);
-      g.position = [parseInt(this._scales.hScale(i)) + 0.5, 0];
-      this._container.add(g);
-      this._zr.refresh();
-    });
-    this.render();
-  }
-  updateAxis () {
-    // if (this._scales.hScale.domain().length === 0) {
-    //   this._scales.hScale.domain(Object.keys(this.data[0])).range([0, this._opt.cWidth]);
-    // }
-    // this._scales.hScale.domain().forEach(i => {
-    //   let g = new zrender.Group();
-    //   g.position =
-    //   this._groupIds.push(g.id);
-    //   this._container.add(g);
-    // })
-    this._scales.color.domain(d3.extent(this.data, i => i['PM10']))
+    let newTicks = ticks.map(i => i.value);
+    this.shuffle(newTicks);
   }
   render () {
-    this.compute();
+    // this._graphGroup.removeAll();
+    let line = d3.line();
     let custom = d3.select(this._custom);
-    let line = d3.line()
-    let updates = custom.selectAll('custom.rect').data(this.computed);
-    let enters = updates.enter().append('custom').attr('class', 'rect');
-    let exits = updates.exit().remove();
-    this._graphGroup.removeAll();
-    this._zr.refresh();
-    let timer = null;
-    let graphs = custom.selectAll('custom.rect').attr('d', d => line(d));
     let self = this;
-    timer = d3.timer(function () {
-      self._graphGroup.removeAll();
-      self._zr.refresh();
-      graphs.each(function (d) {
-        let pathStr = d3.select(this).attr('d');
-        let polyline = zrender.path.createFromString(pathStr, {
-          style: { stroke: d.fill, fill: 'transparent' }
-        });
-        self._graphGroup.add(polyline);
+    let updates = custom.selectAll('custom.line').data(this._computed);
+    let exits = updates.exit();
+    let enters = updates.enter().append('custom').attr('class', 'line');
+    enters.attr('fill', d => d.fill)
+      .attr('d', d => d);
+    enters.each(function (d) {
+      let node = d3.select(this);
+      // let line = zrender.path.createFromString(node.attr('d'), { style: { stroke: node.attr('fill'), fill: 'transparent' } });
+      let line = new zrender.Polyline({
+        shape: { points: d },
+        style: { stroke: d.fill }
+      });
+      line.attr('name', "#" + line.id);
+      node.attr('id', '#' + line.id);
+      self._graphGroup.add(line);
+    });
+    updates.each(function (d) {
+      let node = d3.select(this);
+      let line = self._graphGroup.childOfName(node.attr('id'));
+      line.animateTo({
+        shape: { points: d }
+      }, 200);
+    });
+    exits.each(function (d) {
+      let node = d3.select(this);
+      let line = self._graphGroup.childOfName(node.attr('id'));
+      line.animateTo({
+        style: { stroke: 'transparent' }
+      }, 200, function () {
+        self._graphGroup.remove(line);
       });
 
-    })
-
-
+    });
+    console.log(self._graphGroup)
+    exits.remove();
+    // custom.selectAll('custom.line').remove();
+    // custom = null;
   }
   compute () {
     // 筛选数据
-    let filter = this.data.slice();
+    let filter = this._data.slice();
     for (let active of this._actives) {
-      let scale = this._scales.vScales[active.key].scale;
+      let scale = this._scales.y[active.key];
       let index = 0;
       for (let i = 0, j = filter.length; i < j; ++i) {
         let pos = scale(filter[i][active.key]);
@@ -144,43 +134,16 @@ export default class Chart {
       }
       filter.length = index;
     }
-    this.computed = [];
+    this._computed = [];
+
     for (let d of filter) {
       let coordinates = [];
-      for (let key of this._scales.hScale.domain()) {
-        coordinates.push([this._scales.hScale(key), this._scales.vScales[key].scale(d[key])]);
+      for (let key of this._scales.x['category'].domain()) {
+        coordinates.push([this._scales.x['category'](key), this._scales.y[key](d[key])]);
       }
-      coordinates.fill = this._scales.color(d['PM10'])
-
-      this.computed.push(coordinates);
+      coordinates.fill = this._scales.color(d['PM10']);
+      this._computed.push(coordinates);
     }
-  }
-  mountAxis (name) {
-    // this._axisGroup.removeAll();
-    // this._zr.refresh();
-    let parentGroup = this._container.childOfName(name);
-    if (parentGroup == null)
-      return;
-    if (name === 'rating') {
-      let domain = [...new Set(this.data.map(i => i[name]))];
-      let range = [this._opt.cHeight, 0];
-      this._scales.vScales[name] = { scale: d3.scalePoint().domain(domain).range(range) }
-    } else {
-      let domain = [0, d3.max(this.data, i => +i[name])];
-      let range = [this._opt.cHeight, 0];
-      this._scales.vScales[name] = { scale: d3.scaleLinear().domain(domain).range(range) };
-    }
-    let childGroup = AxisBuilder(this._scales.vScales[name].scale, { ...this._opt, name: name, orient: 'right', tickArguments: 5 }, this);
-    parentGroup.add(childGroup);
-  }
-  mountBrush (name) {
-    // this._brushGroup.removeAll();
-    // this._zr.refresh();
-    let parentGroup = this._container.childOfName(name);
-    if (parentGroup == null) return;
-    let g = BrushXBuilder(this, { ...this._opt, key: name, extent: [20, this._opt.cHeight] });
-    parentGroup.add(g);
 
   }
-
 }

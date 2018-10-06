@@ -1,7 +1,7 @@
 const cleanWebpackPlugin = require('clean-webpack-plugin')
 const path = require('path')
 const extractTextWebpackPlugin = require('extract-text-webpack-plugin')
-const offlinePlugin = require('offline-plugin')
+
 
 module.exports = {
   mode: 'production',
@@ -13,6 +13,5 @@ module.exports = {
     new cleanWebpackPlugin(['dist'], {
       root: path.resolve(__dirname, '..')
     }),
-    new offlinePlugin()
   ]
 }

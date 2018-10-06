@@ -31,17 +31,27 @@ const generatedConfig = (env) => {
 
 
   return {
-    entry: path.resolve(__dirname, '..', 'src', 'index.js'),
+    entry: path.resolve(__dirname, '..', 'src', 'index.ts'),
     output: {
       path: path.resolve(__dirname, '..', 'dist'),
       filename: 'assets/script/[name].[chunkhash:5].js',
       publicPath: '/'
+    },
+    resolve: {
+      extensions: ['.ts', '.js']
     },
     optimization: {
       runtimeChunk: {
         name: 'manifest'
       },
       splitChunks: {
+        cacheGroups: {
+          vendors: {
+            priority: 0,
+            chunks: 'all',
+            test: /[\\/]node_modules[\\/]/,
+          }
+        },
         chunks: "all",
         minSize: 20000,
         minChunks: 1,
@@ -55,6 +65,10 @@ const generatedConfig = (env) => {
         {
           test: /\.scss$/,
           use: styleLoader
+        },
+        {
+          test: /\.tsx?$/,
+          use: { loader: 'ts-loader' }
         },
         {
           test: /\.(png|jpg|jpeg|gif)$/,
@@ -91,6 +105,10 @@ const generatedConfig = (env) => {
       ]
     },
     plugins: [
+      new webpack.ProvidePlugin({
+        zrender: 'zrender',
+        d3: 'd3'
+      }),
       new htmlWebpackPlugin({
         filename: 'index.html',
         template: path.resolve(__dirname, '..', 'index.html'),

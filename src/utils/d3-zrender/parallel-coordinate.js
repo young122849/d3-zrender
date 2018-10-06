@@ -3,7 +3,7 @@ import * as d3 from 'd3';
 import Chart from './base';
 import { AxisBuilder } from './AxisBuilder';
 import { BrushXBuilder } from './BrushBuilder';
-import { fixCoordinate } from './helper/fix'
+
 export default class ParallelCoordinate extends Chart {
   constructor(elm, opt) {
     super(elm, opt);
@@ -89,7 +89,6 @@ export default class ParallelCoordinate extends Chart {
       .attr('d', d => d);
     enters.each(function (d) {
       let node = d3.select(this);
-      // let line = zrender.path.createFromString(node.attr('d'), { style: { stroke: node.attr('fill'), fill: 'transparent' } });
       let line = new zrender.Polyline({
         shape: { points: d },
         style: { stroke: d.fill }
@@ -115,10 +114,7 @@ export default class ParallelCoordinate extends Chart {
       });
 
     });
-    console.log(self._graphGroup)
     exits.remove();
-    // custom.selectAll('custom.line').remove();
-    // custom = null;
   }
   compute () {
     // 筛选数据
